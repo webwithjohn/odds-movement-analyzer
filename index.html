@@ -334,7 +334,7 @@ function render(){
   notes.push(`The five methods span ${pct(Math.min(...vals))} to ${pct(Math.max(...vals))} for ${esc(n1)}, a gap of ${(spread*100).toFixed(1)} points. ${spread<.05?'They agree because each starts from the latest price, which holds most of the information.':'The gap comes from how much each assumes past movement continues.'}`);
   if(Math.max(R.win,1-R.win)<.58)notes.push(`This is close to a coin flip: the pick wins about ${Math.round(pw*100)} times in 100.`);
   $('notes').innerHTML=notes.map(n=>`<li>${n}</li>`).join('');
-  $('how').innerHTML=Mt.how;
+  $('how').innerHTML=R.how;
   const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
   $('cmp').innerHTML=`<thead><tr><th>Method</th><th>${esc(n1)} win</th><th>${esc(n2)} win</th><th>Range at start</th><th>Pick</th></tr></thead><tbody>`+
     ORDER.map(k=>{const a=all[k];return `<tr class="${k===method?'sel':''}"><td>${METHODS[k].name}</td><td>${pct(a.win)}</td><td>${pct(1-a.win)}</td><td>${a.lo!=null&&hz?pct(a.lo,0)+'–'+pct(a.hi,0):'—'}</td><td>${esc(a.win>=.5?n1:n2)}</td></tr>`}).join('')+
