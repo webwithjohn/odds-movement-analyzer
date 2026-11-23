@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Odds Movement Analyzer</title>
+<style>
+/* VOICE: plain and exact, like a printed analytical report; the verdict first, the working after.
+   IDEA: a reference sheet: one method at a time, with its numbers, chart and comparison on the same page.
+   PICTURE: Side 1 probability history and the selected method's 50%/90% forecast range.
+   COLOUR and TYPE: white paper, near-black ink, one blue and one orange for the two sides; Georgia headings, system sans body.
+   LAYOUT: data-input sidebar on the left; method tabs, verdict and chart, settings, readout, comparison and history tables on the right. */
+:root{color-scheme:light dark;--bg:light-dark(#fff,#15171a);--panel:light-dark(#f6f6f3,#1d2024);--ink:light-dark(#1a1a1a,#ebebeb);--mute:light-dark(#595959,#a2a7ae);--line:light-dark(#d6d6d1,#383c43);--s1:light-dark(#1f5fa8,#78aeea);--s2:light-dark(#a84e0a,#e8975b);--err:light-dark(#b3261e,#f2958d)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;overflow-x:clip}
+h1,h2,.big,.card .v{font-family:Georgia,"Times New Roman",serif;font-weight:400}
+.band{padding:40px clamp(16px,3vw,40px)}
+.band+.band{border-top:1px solid var(--line)}
+.wrap{max-width:1100px;margin:0 auto}
+.kick{color:var(--mute);font-size:13px;letter-spacing:.06em;text-transform:uppercase;margin:0 0 8px}
+h1{font-size:clamp(26px,3.4vw,38px);line-height:1.2;margin:0 0 24px;text-wrap:balance}
+.tabs{display:flex;flex-wrap:wrap;gap:0 24px;margin:0 0 28px;border-bottom:1px solid var(--line)}
+.tabs button{background:none;color:var(--mute);border:0;border-bottom:3px solid transparent;border-radius:0;padding:8px 0;margin-bottom:-1px;font-weight:500}
+.tabs button[aria-pressed=true]{color:var(--ink);border-bottom-color:var(--ink);font-weight:600}
+.hero{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:32px;align-items:stretch}
+.verdict{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:20px;display:flex;flex-direction:column;gap:10px}
+.verdict .lab{font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.big{font-size:clamp(34px,4.6vw,48px);line-height:1.05;overflow-wrap:anywhere}
+.split{display:flex;height:10px;background:var(--line)}
+.split i{display:block;height:100%}
+.legend{display:flex;justify-content:space-between;font-size:14px;font-weight:600}
+.range{font-size:14px;color:var(--mute);border-top:1px solid var(--line);padding-top:10px}
+.range b{color:var(--ink)}
+.conf{font-size:14px;font-weight:600;border-left:3px solid var(--ink);padding-left:10px}
+.chartbox{border:1px solid var(--line);border-radius:4px;padding:12px}
+.fig{position:relative;min-height:340px}.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.gl{stroke:var(--line);stroke-width:1}.gl2{stroke:var(--line);stroke-width:1;opacity:.5}
+.tx{fill:var(--mute)}.mid{stroke:var(--mute)}.now{stroke:var(--mute);stroke-width:1}
+.b90{fill:var(--s1);opacity:.14}.b50{fill:var(--s1);opacity:.28}
+.fc{stroke:var(--ink)}.ln{stroke:var(--s1)}.dot{fill:var(--bg);stroke:var(--s1)}.lbl{fill:var(--ink)}
+.keys{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--mute);padding:8px 4px 0}
+.keys b{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:6px}
+.keys b.band50{height:10px;background:var(--s1);opacity:.28}
+.keys b.band90{height:10px;background:var(--s1);opacity:.14}
+h2{font-size:22px;line-height:1.2;margin:0 0 16px}
+.ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px 28px;margin-bottom:36px}
+.ctl label{display:block;font-size:14px;color:var(--mute)}
+.ctl output{float:right;font-weight:600;color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--s1);min-height:32px}
+select{font:16px system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;min-height:44px;width:100%;margin-top:6px;padding:0 10px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 32px}
+.card{border-top:2px solid var(--ink);padding:12px 0 20px}
+.card .k{font-size:13px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+.card .v{font-size:28px;line-height:1.2;margin:4px 0;white-space:nowrap}
+.card p{margin:0;font-size:14px;color:var(--mute)}
+.meter{height:4px;background:var(--line);margin-top:10px}.meter i{display:block;height:100%;background:var(--s1)}
+.notes{margin:20px 0 0;padding-left:20px}.notes li{margin:6px 0}
+details{margin-top:24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0}
+summary{cursor:pointer;font-weight:600;min-height:28px}
+details p,details li{font-size:15px}
+table{width:100%;border-collapse:collapse;font-size:15px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-weight:600;color:var(--ink);font-size:13px;border-bottom:2px solid var(--ink)}th:first-child,td:first-child{text-align:left;padding-left:0}
+td.up{color:var(--s1);font-weight:600}td.dn{color:var(--s2);font-weight:600}
+.flag{font-size:11px;border:1px solid var(--mute);color:var(--mute);border-radius:2px;padding:1px 5px;margin-left:6px;text-transform:uppercase;letter-spacing:.04em}
+.cmp td:nth-child(2){font-weight:600}
+.cmp tr.sel td{background:var(--panel)}
+.hide{display:none}
+textarea{width:100%;display:block;margin-top:6px;min-height:320px;resize:vertical;font:13px/1.45 ui-monospace,Menlo,Consolas,monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;align-items:center}
+button{font:600 15px system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;min-height:44px;padding:0 18px;border-radius:4px;border:1px solid var(--ink);background:var(--ink);color:var(--bg);cursor:pointer}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--s1);outline-offset:2px}
+input[type=text]{font:16px system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;min-height:44px;padding:0 10px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);width:100%;margin-top:6px}
+.err{color:var(--err);font-weight:600}
+.small{font-size:14px;color:var(--mute)}
+pre,.scroll{overflow-x:auto}code{overflow-wrap:anywhere;font-size:.92em}
+@media(max-width:600px){table{font-size:13px}.fig{min-height:280px}}
+.layout{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);align-items:start}
+.layout main{min-width:0}
+.side{position:sticky;top:0;align-self:start;height:100vh;height:100dvh;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:24px 20px}
+.side h2{font-size:18px}
+.side .fld{display:block;font-size:14px;color:var(--mute);margin-bottom:14px}
+.side .row button{flex:1 1 auto}
+.side .err{margin:10px 0 0}
+.sidetoggle{display:none;width:100%;justify-content:space-between;align-items:center;background:transparent;color:var(--ink);border:1px solid var(--line)}
+@media(max-width:1180px){.hero{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:900px){.layout{grid-template-columns:minmax(0,1fr)}.side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:12px 16px}.sidetoggle{display:flex}.sidehead{display:none}.side .sidebody{display:none;margin-top:14px}.side.open .sidebody{display:block}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="side" id="side" aria-label="Data input">
+  <button type="button" class="sidetoggle" id="sidetoggle" aria-expanded="false" aria-controls="sidebody"><span>Data input</span><span aria-hidden="true">▾</span></button>
+  <div class="sidebody" id="sidebody">
+    <h2 class="sidehead">Data input</h2>
+    <p class="small">Paste the same JSON format (two sides with <code>moves</code> of <code>t</code> and <code>y</code>). Loaded now: the market you sent.</p>
+    <label class="fld">Side 1 name <input type="text" id="n1" value="Side 1"></label>
+    <label class="fld">Side 2 name <input type="text" id="n2" value="Side 2"></label>
+    <label class="fld">Odds JSON <textarea id="src" spellcheck="false"></textarea></label>
+    <div class="row"><button id="go">Analyze</button><button class="ghost" id="reset">Restore original data</button></div>
+    <p id="msg" class="err" role="status"></p>
+  </div>
+</aside>
+<main>
+<header class="band top"><div class="wrap">
+  <p class="kick" id="kick">Odds movement analysis</p>
+  <h1 id="title">Analyzing…</h1>
+  <div class="tabs" id="tabs" role="group" aria-label="Prediction method"></div>
+  <div class="hero">
+    <div class="verdict">
+      <div class="lab" id="mlab">Predicted winner</div>
+      <div class="big" id="pick">–</div>
+      <div id="pickp" style="font-weight:600"></div>
+      <div class="split" id="split"></div>
+      <div class="legend" id="legend"></div>
+      <div class="range" id="range"></div>
+      <div class="conf" id="conf"></div>
+    </div>
+    <div class="chartbox">
+      <div class="fig"><svg id="chart" role="img" aria-label="Win probability history and forecast"></svg></div>
+      <div class="keys" id="keys"></div>
+    </div>
+  </div>
+</div></header>
+
+<section class="band"><div class="wrap">
+  <h2>Settings</h2>
+  <div class="ctl">
+    <label>Hours until the event starts <output id="hzo"></output><input type="range" id="hz" min="0" max="72" step="1" value="6"></label>
+    <label id="c-boot">Bootstrap drift
+      <select id="drift"><option value="keep" selected>Keep this market's drift</option><option value="remove">Remove drift (efficient market)</option></select></label>
+    <label id="c-ou" class="hide">Reversion anchor
+      <select id="anchor"><option value="avg" selected>Average price over the period (contrarian)</option><option value="open">Opening price</option><option value="fit">Fitted by the model</option></select></label>
+    <label id="c-trend" class="hide">Trend persistence <output id="pso"></output><input type="range" id="ps" min="0" max="100" step="5" value="30"></label>
+    <label id="c-kf" class="hide">Momentum half-life
+      <select id="lam"><option value="auto" selected>Auto: fitted to this market</option><option value="0">Never fades</option><option value="24">24 hours</option><option value="6">6 hours</option><option value="1">1 hour</option><option value="none">No momentum (random walk)</option></select></label>
+  </div>
+  <h2>Method readout</h2>
+  <div class="grid" id="cards"></div>
+  <ul class="notes" id="notes"></ul>
+  <details><summary>How this method works</summary><div id="how"></div></details>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <h2>All five methods side by side</h2>
+  <div class="scroll"><table class="cmp" id="cmp"></table></div>
+  <p class="small">Every method uses the same data and the same hours-to-start setting. The average is a simple equal-weight blend.</p>
+</div></section>
+
+<section class="band"><div class="wrap">
+  <h2>Every move</h2>
+  <div class="scroll"><table id="tbl"></table></div>
+  <p class="small">Simple % scales both sides' implied probabilities equally; Shin % puts more of the margin on the underdog. Flagged rows moved the Shin line by 2 points or more.</p>
+</div></section>
+
+
+<footer class="band small"><div class="wrap">
+  These methods read what the betting market thinks; none of them knows anything the market doesn't, which is why they mostly agree. Forecasts describe where the price may go, and upsets happen at roughly the rate the probabilities say. Not betting advice.
+</div></footer>
+</main>
+</div>
+
+<script>
+{
+const ORIG={"generated_at":"2026-11-20 00:04:50","data":{"1":{"moves":[{"t":"2026-11-15 10:54:15","y":"2.55"},{"t":"2026-11-15 11:06:22","y":"2.534"},{"t":"2026-11-16 08:32:21","y":"2.52"},{"t":"2026-11-16 09:07:28","y":"2.46"},{"t":"2026-11-16 09:11:21","y":"2.481"},{"t":"2026-11-16 14:36:22","y":"2.32"},{"t":"2026-11-16 16:06:52","y":"2.364"},{"t":"2026-11-16 17:28:55","y":"2.24"},{"t":"2026-11-17 08:47:58","y":"2.228"},{"t":"2026-11-17 23:36:50","y":"2.168"},{"t":"2026-11-18 04:48:28","y":"2.087"},{"t":"2026-11-18 08:48:10","y":"2.017"},{"t":"2026-11-18 12:25:12","y":"1.99"},{"t":"2026-11-18 12:41:37","y":"1.9"},{"t":"2026-11-18 13:02:33","y":"1.92"},{"t":"2026-11-18 15:12:53","y":"1.84"},{"t":"2026-11-18 17:05:42","y":"1.76"},{"t":"2026-11-18 17:44:43","y":"1.735"}]},"2":{"moves":[{"t":"2026-11-15 10:54:15","y":"1.45"},{"t":"2026-11-15 11:06:22","y":"1.418"},{"t":"2026-11-16 08:32:21","y":"1.41"},{"t":"2026-11-16 09:07:28","y":"1.43"},{"t":"2026-11-16 09:11:21","y":"1.442"},{"t":"2026-11-16 14:36:22","y":"1.503"},{"t":"2026-11-16 16:06:52","y":"1.479"},{"t":"2026-11-16 17:28:55","y":"1.554"},{"t":"2026-11-17 08:47:58","y":"1.542"},{"t":"2026-11-17 23:36:50","y":"1.573"},{"t":"2026-11-18 04:48:28","y":"1.636"},{"t":"2026-11-18 08:48:10","y":"1.683"},{"t":"2026-11-18 12:25:12","y":"1.66"},{"t":"2026-11-18 12:41:37","y":"1.727"},{"t":"2026-11-18 13:02:33","y":"1.71"},{"t":"2026-11-18 15:12:53","y":"1.78"},{"t":"2026-11-18 17:05:42","y":"1.86"},{"t":"2026-11-18 17:44:43","y":"2.03"}]}}};
+const $=id=>document.getElementById(id);
+const pct=(x,d=1)=>(x*100).toFixed(d)+'%';
+const pp=x=>(x>=0?'+':'−')+Math.abs(x*100).toFixed(1)+' pts';
+const ts=s=>Date.parse(String(s).replace(' ','T')+(/[zZ]|[+-]\d\d:?\d\d$/.test(s)?'':'Z'));
+const fmtT=ms=>new Date(ms).toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
+const logit=p=>Math.log(p/(1-p)),sig=x=>1/(1+Math.exp(-x));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const Phi=x=>{const t=1/(1+.2316419*Math.abs(x)),d=.3989423*Math.exp(-x*x/2),p=d*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return x>0?1-p:p};
+const expSig=(m,s)=>{let n=0,w0=0;for(let i=-60;i<=60;i++){const z=i/10,w=Math.exp(-z*z/2);n+=w*sig(m+s*z);w0+=w}return n/w0};
+const lg=(a,b,n)=>Array.from({length:n},(_,i)=>Math.pow(10,a+(b-a)*i/(n-1)));
+let D=null,R=null,method='ou';const cache={};
+function shin(o1,o2){
+  const q=[1/o1,1/o2],Q=q[0]+q[1];
+  if(Q<=1)return{p:[q[0]/Q,q[1]/Q],z:0};
+  const P=z=>q.map(x=>(Math.sqrt(z*z+4*(1-z)*x*x/Q)-z)/(2*(1-z)));
+  let lo=0,hi=.5;for(let k=0;k<60;k++){const m=(lo+hi)/2;if(P(m)[0]+P(m)[1]>1)lo=m;else hi=m}
+  const p=P((lo+hi)/2),s=p[0]+p[1];return{p:[p[0]/s,p[1]/s],z:(lo+hi)/2};
+}
+function step(x,P,dt,th){
+  const ph=th.lam>0?Math.exp(-th.lam*dt):1,a=th.lam>0?(1-ph)/th.lam:dt;
+  return{m:[x[0]+a*x[1],ph*x[1]],P:[P[0]+2*a*P[1]+a*a*P[2]+th.qL*dt,ph*(P[1]+a*P[2]),ph*ph*P[2]+th.qv*dt]};
+}
+function kf(obs,th,keep){
+  let x=[obs[0].y,0],P=[th.r,0,th.qv>0?1e-3:0],ll=0;const out=[];
+  for(let k=0;k<obs.length;k++){
+    let z=0;
+    if(k){const s=step(x,P,obs[k].h-obs[k-1].h,th);x=s.m;P=s.P}
+    const S=P[0]+th.r,e=obs[k].y-x[0];
+    if(k){ll+=-.5*(Math.log(2*Math.PI*S)+e*e/S);z=e/Math.sqrt(S)}
+    const K0=P[0]/S,K1=P[1]/S;
+    x=[x[0]+K0*e,x[1]+K1*e];P=[(1-K0)*P[0],(1-K0)*P[1],P[2]-K1*P[1]];
+    if(keep)out.push({L:x[0],v:x[1],sd:Math.sqrt(Math.max(P[0],0)),z});
+  }
+  return{ll,x,P,out};
+}
+
+function fitOU(obs,thetaFix){
+  const ks=[0,...Array.from({length:40},(_,i)=>Math.pow(10,-4+3.5*i/39))];let best=null;
+  for(const k of ks){
+    const rows=[];for(let i=1;i<obs.length;i++){const dt=Math.max(obs[i].h-obs[i-1].h,1/60),a=k>0?Math.exp(-k*dt):1,v=k>0?(1-Math.exp(-2*k*dt))/(2*k):dt;rows.push({a,v,x:obs[i-1].y,y:obs[i].y})}
+    let th;
+    if(thetaFix!=null)th=thetaFix;else if(k===0)th=0;else{let n=0,d=0;rows.forEach(r=>{const w=1/r.v,c=1-r.a;n+=w*c*(r.y-r.a*r.x);d+=w*c*c});th=d>1e-12?n/d:0}
+    let s2=0;rows.forEach(r=>{const e=r.y-th*(1-r.a)-r.a*r.x;s2+=e*e/r.v});s2/=rows.length;
+    let ll=0;rows.forEach(r=>{const e=r.y-th*(1-r.a)-r.a*r.x,V=s2*r.v;ll+=-.5*(Math.log(2*Math.PI*V)+e*e/V)});
+    if(!best||ll>best.ll)best={k,th,s2,ll};
+  }
+  return best;
+}
+function rwLL(obs){let s2=0;const n=obs.length-1;for(let i=1;i<obs.length;i++){const dt=Math.max(obs[i].h-obs[i-1].h,1/60),e=obs[i].y-obs[i-1].y;s2+=e*e/dt}s2/=n;let ll=0;for(let i=1;i<obs.length;i++){const dt=Math.max(obs[i].h-obs[i-1].h,1/60),e=obs[i].y-obs[i-1].y,V=s2*dt;ll+=-.5*(Math.log(2*Math.PI*V)+e*e/V)}return ll}
+function load(json){
+  const d=json.data||json,keys=Object.keys(d).filter(k=>d[k]&&Array.isArray(d[k].moves));
+  if(keys.length<2)throw new Error('Need two sides, each with a "moves" array.');
+  const A=d[keys[0]].moves.map(m=>({t:ts(m.t),y:+m.y})),B=d[keys[1]].moves.map(m=>({t:ts(m.t),y:+m.y}));
+  if([...A,...B].some(m=>!isFinite(m.t)||!(m.y>1)))throw new Error('Every move needs a valid time and decimal odds above 1.');
+  A.sort((x,y)=>x.t-y.t);B.sort((x,y)=>x.t-y.t);
+  const times=[...new Set([...A,...B].map(m=>m.t))].sort((x,y)=>x-y);
+  let i=-1,j=-1;const pts=[];
+  for(const t of times){
+    while(i+1<A.length&&A[i+1].t<=t)i++;while(j+1<B.length&&B[j+1].t<=t)j++;
+    if(i<0||j<0)continue;
+    const o1=A[i].y,o2=B[j].y,ov=1/o1+1/o2,s=shin(o1,o2);
+    pts.push({t,o1,o2,ov,simple:(1/o1)/ov,p1:s.p[0],h:(t-times[0])/36e5,y:logit(s.p[0])});
+  }
+  if(pts.length<4)throw new Error('Need at least four overlapping snapshots.');
+  pts.forEach((p,k)=>p.d=k?p.p1-pts[k-1].p1:null);
+  return pts;
+}
+function fitKF(obs,mode){
+  if(cache[mode])return cache[mode];
+  const lams=mode==='auto'?[0,96,48,24,12,6,3,1].map(h=>h?Math.LN2/h:0):mode==='none'?[0]:[+mode?Math.LN2/+mode:0];
+  const qvs=mode==='none'?[0]:lg(-9,-1,17);let best=null;
+  for(const qL of lg(-8,-1,15))for(const qv of qvs)for(const r of lg(-7,-1.5,12))for(const lam of lams){const th={qL,qv,r,lam},ll=kf(obs,th).ll;if(!best||ll>best.ll)best={ll,th}}
+  best.k=mode==='none'?2:mode==='auto'?4:3;return cache[mode]=best;
+}
+function wfit(pts,hl){
+  const tN=pts[pts.length-1].t;let sw=0,sx=0,sy=0;
+  const rows=pts.map(p=>{const x=(p.t-tN)/36e5,w=Math.pow(.5,-x/hl);sw+=w;sx+=w*x;sy+=w*p.y;return{x,y:p.y,w}});
+  const mx=sx/sw,my=sy/sw;let sxx=0,sxy=0,syy=0;
+  rows.forEach(r=>{sxx+=r.w*(r.x-mx)**2;sxy+=r.w*(r.x-mx)*(r.y-my);syy+=r.w*(r.y-my)**2});
+  const b=sxx>0?sxy/sxx:0;return{b,a:my-b*mx,r2:syy>0?sxy*sxy/(sxx*syy):0};
+}
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const NF=24,grid=hz=>Array.from({length:NF+1},(_,k)=>hz*k/NF);
+const q=(a,p)=>{const i=(a.length-1)*p,l=Math.floor(i);return a[l]+(a[Math.min(l+1,a.length-1)]-a[l])*(i-l)};
+
+const METHODS={
+  simple:{name:'Market consensus',lab:'Latest price, margin removed proportionally',run(pts,hz){
+    const L=pts[pts.length-1],F=pts[0];
+    return{win:L.simple,lo:null,hi:null,fav:L.simple>=.5?1:0,fan:null,
+      cards:[['Opening → now',`${pct(F.simple)} → ${pct(L.simple)}`,'Side 1, proportional margin removal'],['Bookmaker margin',pct(L.ov-1),`was ${pct(F.ov-1)} at open`],['Forecast horizon','None','This method ignores movement and takes the latest price as final']],
+      how:'<p>Each side\'s implied probability is 1 ÷ odds. The two add to more than 100% because of the bookmaker\'s margin, so both are scaled down by the same factor. The latest price is the prediction; the movement history is shown but not used.</p>'}}},
+  trend:{name:'Log-odds trend',lab:'Shin probability + weighted trend projection',run(pts,hz){
+    const ps=+$('ps').value/100,f=wfit(pts,24),L0=pts[pts.length-1].y;
+    const fan=grid(hz).map(h=>{const a=sig(L0),b=sig(L0+f.b*h);return{h,m:sig(L0+ps*f.b*h),lo90:Math.min(a,b),hi90:Math.max(a,b)}});
+    const e=fan[NF];
+    return{win:e.m,lo:e.lo90,hi:e.hi90,fav:e.m>=.5?1:0,fan,rangeNote:'from "prices are final" to "trend continues fully"',
+      cards:[['Drift speed',`${pp(sig(L0+f.b*24)-sig(L0))} / day`,`from a regression weighted to the last 24 hours`],['Trend fit (R²)',f.r2.toFixed(2),f.r2>=.8?'A clean, steady line':f.r2>=.5?'A trend with noise':'Mostly noise',f.r2*100],['Persistence',Math.round(ps*100)+'%','Share of the trend assumed to continue to the start']],
+      how:'<p>Margin is removed with Shin\'s method, which puts more of it on the underdog. Probabilities become log-odds and a weighted linear regression is fitted through time, with a 24-hour half-life on the weights. The latest price is carried forward with the fitted drift times the persistence setting. The fan spans 0% to 100% persistence.</p>'}}},
+  kalman:{name:'Kalman filter',lab:'State-space model of level and momentum',run(pts,hz){
+    const mode=$('lam').value,fit=fitKF(pts,mode),rw=fitKF(pts,'none'),full=fitKF(pts,'auto'),k=kf(pts,fit.th,true);
+    const fc=h=>{if(!h)return{m:k.x[0],sd:Math.sqrt(k.P[0])};const s=step(k.x,k.P,h,fit.th);return{m:s.m[0],sd:Math.sqrt(s.P[0])}};
+    const fan=grid(hz).map(h=>{const f=fc(h);return{h,m:expSig(f.m,f.sd),lo90:sig(f.m-1.645*f.sd),hi90:sig(f.m+1.645*f.sd),lo50:sig(f.m-.674*f.sd),hi50:sig(f.m+.674*f.sd)}});
+    const F=fc(hz),e=fan[NF],aic=(2*full.k-2*full.ll)-(2*rw.k-2*rw.ll),fin=k.out[k.out.length-1];
+    const hl=fit.th.qv===0?'none':fit.th.lam>0?(Math.LN2/fit.th.lam).toFixed(0)+' h':'never fades';
+    return{win:e.m,lo:e.lo90,hi:e.hi90,fav:Phi(F.m/Math.max(F.sd,1e-9)),fan,rangeNote:'90% range of the fair price',
+      cards:[['Filtered level now',pct(sig(fin.L)),`vs last price ${pct(pts[pts.length-1].p1)}`],['Momentum half-life',hl,mode==='auto'?'Fitted to this market':'Set by you'],['Momentum evidence',aic<-4?'Strong':aic<-2?'Some':'Weak',`AIC gain over a random walk: ${(-aic).toFixed(1)}`,Math.min(100,Math.max(0,-aic*10))]],
+      how:'<p>The market is modelled as a hidden level plus a fading momentum, with each price a noisy reading of the level. A Kalman filter updates both after each snapshot and tracks their uncertainty. Noise sizes and the momentum half-life are fitted by maximum likelihood. The final state is run forward to the start to give a distribution of fair prices; the win probability averages over it.</p>'}}},
+  ou:{name:'Mean reversion',lab:'Ornstein–Uhlenbeck: do moves snap back?',run(pts,hz){
+    const mode=$('anchor').value,span=pts[pts.length-1].h;
+    const avg=pts.slice(1).reduce((s,p,i)=>s+pts[i].y*(p.h-pts[i].h),0)/Math.max(span,1e-9);
+    const fix=mode==='avg'?avg:mode==='open'?pts[0].y:null,f=fitOU(pts,fix),rw=rwLL(pts),L0=pts[pts.length-1].y;
+    const fc=h=>{const a=f.k?Math.exp(-f.k*h):1;return{m:f.th+(L0-f.th)*a,sd:Math.sqrt(h?(f.k?f.s2*(1-a*a)/(2*f.k):f.s2*h):0)}};
+    const fan=grid(hz).map(h=>{const c=fc(h);return{h,m:expSig(c.m,c.sd),lo90:sig(c.m-1.645*c.sd),hi90:sig(c.m+1.645*c.sd),lo50:sig(c.m-.674*c.sd),hi50:sig(c.m+.674*c.sd)}});
+    const F=fc(hz),e=fan[NF],k=fix==null?3:2,aic=(2*k-2*f.ll)-(2-2*rw);
+    const pull=f.th>L0?'up':'down',hl=f.k?(Math.LN2/f.k):Infinity;
+    return{win:e.m,lo:e.lo90,hi:e.hi90,fav:F.sd>0?Phi(F.m/F.sd):(F.m>0?1:0),fan,rangeNote:'90% range of the fair price',
+      cards:[['Anchor',pct(sig(f.th)),mode==='fit'?`Fitted level the price is pulled toward (${pull} from here)`:`${mode==='avg'?'Time-weighted average':'Opening'} price; the pull is ${pull} from here`],
+        ['Reversion half-life',isFinite(hl)?(hl<48?hl.toFixed(0)+' h':(hl/24).toFixed(1)+' days'):'none',isFinite(hl)?'Time to close half the gap to the anchor':'No reversion found: behaves as a random walk'],
+        ['Reversion evidence',aic<-4?'Strong':aic<-2?'Some':aic<0?'Weak':'None',aic<0?`AIC gain over a random walk: ${(-aic).toFixed(1)}`:`A plain random walk fits better (AIC by ${aic.toFixed(1)})`,Math.min(100,Math.max(0,-aic*10))]],
+      how:'<p>This method tests the overreaction idea: that betting prices overshoot and then drift back. Side 1\'s fair log-odds are modelled as being pulled toward an anchor at a fitted speed, plus random shocks (an Ornstein–Uhlenbeck process, solved exactly for the uneven gaps between snapshots). The pull speed and noise are fitted by maximum likelihood. The anchor is the period\'s time-weighted average price by default, the classic contrarian assumption; you can switch to the opening price or let the model fit it. The forecast is the distribution of fair prices at the start, averaged into a win probability, and the model is compared with a pure random walk by AIC.</p>'}}},
+  boot:{name:'Bootstrap Monte Carlo',lab:'4,000 simulated paths built from this market\'s own moves',run(pts,hz){
+    const keep=$('drift').value==='keep';
+    let inc=pts.slice(1).map((p,k)=>({dt:Math.max((p.t-pts[k].t)/36e5,1/60),dy:p.y-pts[k].y}));
+    const T=inc.reduce((a,b)=>a+b.dt,0),mu=inc.reduce((a,b)=>a+b.dy,0)/T;
+    if(!keep)inc=inc.map(i=>({dt:i.dt,dy:i.dy-mu*i.dt}));
+    const L0=pts[pts.length-1].y,g=grid(hz),N=4000,r=rng(20261119),cols=g.map(()=>new Float64Array(N));let wins=0,fav=0;
+    for(let n=0;n<N;n++){
+      let tau=0,L=L0,c=0;
+      while(c<=NF&&g[c]<=0){cols[c][n]=L;c++}
+      while(c<=NF){const s=inc[Math.floor(r()*inc.length)],nt=tau+s.dt;
+        while(c<=NF&&g[c]<=nt){cols[c][n]=L+s.dy*(g[c]-tau)/s.dt;c++}
+        L+=s.dy;tau=nt}
+      const e=cols[NF][n];wins+=sig(e);if(e>0)fav++;
+    }
+    const fan=g.map((h,k)=>{const a=Array.from(cols[k]).sort((x,y)=>x-y);return{h,m:a.reduce((s,v)=>s+sig(v),0)/N,lo90:sig(q(a,.05)),hi90:sig(q(a,.95)),lo50:sig(q(a,.25)),hi50:sig(q(a,.75))}});
+    const e=fan[NF],big=inc.reduce((m,i)=>Math.max(m,Math.abs(i.dy)),0);
+    return{win:wins/N,lo:e.lo90,hi:e.hi90,fav:fav/N,fan,rangeNote:'5th–95th percentile of simulated fair prices',
+      cards:[['Moves resampled',String(inc.length),`gaps from ${Math.min(...inc.map(i=>i.dt)).toFixed(1)} h to ${Math.max(...inc.map(i=>i.dt)).toFixed(1)} h`],['Average drift',`${pp(sig(L0+mu*24)-sig(L0))} / day`,keep?'Kept: paths inherit the market\'s past direction':'Removed: paths are centred on the latest price'],['Largest single move',(big).toFixed(2)+' log-odds','The biggest jump any path can draw at once']],
+      how:'<p>No model shape is assumed. The tool takes every observed change in Side 1\'s log-odds between snapshots, each with its time gap, and builds 4,000 future paths by drawing those changes at random (with replacement) until the hours-to-start are filled. The last draw is scaled to fit. Each path\'s end point is a possible fair price; the win probability averages over all of them. Removing drift subtracts the average trend so only the size and shape of moves carry over. The random seed is fixed, so results are repeatable.</p>'}}}
+};
+const ORDER=['ou','boot','kalman','trend','simple'];
+
+function confLabel(p){const m=Math.max(p,1-p);return m<0.55?'Toss-up: the sides are barely separated':m<0.62?'Slight lean':m<0.72?'Moderate favourite':'Strong favourite'}
+
+function render(){
+  const hz=+$('hz').value,n1=$('n1').value.trim()||'Side 1',n2=$('n2').value.trim()||'Side 2';
+  $('hzo').textContent=hz+' h';$('pso').textContent=$('ps').value+'%';
+  $('c-boot').classList.toggle('hide',method!=='boot');$('c-trend').classList.toggle('hide',method!=='trend');$('c-ou').classList.toggle('hide',method!=='ou');$('c-kf').classList.toggle('hide',method!=='kalman');
+  const all={};ORDER.forEach(k=>all[k]=METHODS[k].run(D,hz));
+  R=all[method];const Mt=METHODS[method],pts=D,first=pts[0],last=pts[pts.length-1];
+  const win1=R.win>=.5,pick=win1?n1:n2,pw=win1?R.win:1-R.win,crossed=(first.p1-.5)*(last.p1-.5)<0,toward=last.p1>first.p1?n1:n2;
+  const spanH=(last.t-first.t)/36e5;
+  $('tabs').innerHTML=ORDER.map(k=>`<button type="button" data-m="${k}" aria-pressed="${k===method}">${METHODS[k].name}</button>`).join('');
+  $('kick').textContent=`${Mt.name} · ${pts.length} snapshots over ${spanH<48?spanH.toFixed(0)+' hours':(spanH/24).toFixed(1)+' days'}`;
+  const vals=ORDER.map(k=>all[k].win),agree=vals.every(v=>(v>=.5)===win1);
+  $('title').textContent=(crossed?`${toward} flipped from underdog to favourite. `:'')+(agree?`All five methods pick ${pick}`:`${Mt.name} picks ${pick}, but the methods disagree`);
+  $('mlab').textContent=Mt.lab;$('pick').textContent=pick;
+  $('pickp').textContent=`${pct(pw)} win probability ${hz&&R.fan?'at event start':'now'}`;
+  $('split').innerHTML=`<i style="width:${R.win*100}%;background:var(--s1)"></i><i style="width:${(1-R.win)*100}%;background:var(--s2)"></i>`;
+  $('legend').innerHTML=`<span style="color:var(--s1)">${esc(n1)} ${pct(R.win)}</span><span style="color:var(--s2)">${esc(n2)} ${pct(1-R.win)}</span>`;
+  $('range').innerHTML=R.lo!=null&&hz?`${esc(n1)} range at start: <b>${pct(R.lo)}</b> to <b>${pct(R.hi)}</b> (${R.rangeNote})<br>Chance ${esc(pick)} is still favourite then: <b>${pct(win1?R.fav:1-R.fav)}</b>`:'No forecast range: the latest price is taken as final.';
+  $('conf').textContent=confLabel(R.win);
+  $('keys').innerHTML=`<span><b style="background:var(--s1)"></b>${esc(n1)} (Shin)</span>`+(R.fan&&R.fan[0].lo50!=null?`<span><b class="band50"></b>50% range</span>`:'')+(R.fan?`<span><b class="band90"></b>${R.fan[0].lo50!=null?'90% range':'Projection range'}</span>`:'')+`<span><b style="background:var(--mute)"></b>50%</span>`;
+  $('cards').innerHTML=R.cards.map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div><p>${c[2]}</p>${c[3]!=null?`<div class="meter"><i style="width:${c[3]}%"></i></div>`:''}</div>`).join('');
+  const spread=Math.max(...vals)-Math.min(...vals),notes=[];
+  if(crossed)notes.push(`${esc(toward)} opened at ${pct(toward===n1?first.p1:1-first.p1)} (Shin) and now sits at ${pct(toward===n1?last.p1:1-last.p1)}: a full flip, usually a sign of news or heavy informed betting.`);
+  notes.push(`The five methods span ${pct(Math.min(...vals))} to ${pct(Math.max(...vals))} for ${esc(n1)}, a gap of ${(spread*100).toFixed(1)} points. ${spread<.05?'They agree because each starts from the latest price, which holds most of the information.':'The gap comes from how much each assumes past movement continues.'}`);
+  if(Math.max(R.win,1-R.win)<.58)notes.push(`This is close to a coin flip: the pick wins about ${Math.round(pw*100)} times in 100.`);
+  $('notes').innerHTML=notes.map(n=>`<li>${n}</li>`).join('');
+  $('how').innerHTML=Mt.how;
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  $('cmp').innerHTML=`<thead><tr><th>Method</th><th>${esc(n1)} win</th><th>${esc(n2)} win</th><th>Range at start</th><th>Pick</th></tr></thead><tbody>`+
+    ORDER.map(k=>{const a=all[k];return `<tr class="${k===method?'sel':''}"><td>${METHODS[k].name}</td><td>${pct(a.win)}</td><td>${pct(1-a.win)}</td><td>${a.lo!=null&&hz?pct(a.lo,0)+'–'+pct(a.hi,0):'—'}</td><td>${esc(a.win>=.5?n1:n2)}</td></tr>`}).join('')+
+    `<tr><td><b>Average</b></td><td>${pct(avg)}</td><td>${pct(1-avg)}</td><td>—</td><td>${esc(avg>=.5?n1:n2)}</td></tr></tbody>`;
+  $('tbl').innerHTML=`<thead><tr><th>Time (UTC)</th><th>${esc(n1)}</th><th>${esc(n2)}</th><th>Simple %</th><th>Shin %</th><th>Change</th><th>Margin</th></tr></thead><tbody>`+
+    pts.map(p=>{const dv=p.d||0,cls=dv>5e-4?'up':dv<-5e-4?'dn':'';return `<tr><td>${fmtT(p.t)}</td><td>${p.o1.toFixed(3)}</td><td>${p.o2.toFixed(3)}</td><td>${pct(p.simple)}</td><td>${pct(p.p1)}</td><td class="${cls}">${p.d==null?'—':pp(dv)}${Math.abs(dv)>=.02?'<span class="flag">big</span>':''}</td><td>${pct(p.ov-1)}</td></tr>`}).join('')+'</tbody>';
+  draw();
+}
+
+const svg=$('chart');
+function draw(){
+  if(!R)return;
+  const W=svg.clientWidth,H=svg.clientHeight;if(!W||!H)return;
+  const pts=D,hz=+$('hz').value,fan=R.fan&&hz?R.fan:null,narrow=W<520,L=narrow?36:44,Rm=narrow?44:56,T=14,B=narrow?24:30;
+  const t0=pts[0].t,tN=pts[pts.length-1].t,t1=tN+Math.max(hz,2)*36e5;
+  const useP=method==='simple'?'simple':'p1';
+  const vals=[...pts.map(p=>p[useP]),.5,...(fan?fan.flatMap(f=>[f.lo90,f.hi90]):[])];
+  const lo=Math.max(0,Math.floor((Math.min(...vals)-.03)*20)/20),hi=Math.min(1,Math.ceil((Math.max(...vals)+.03)*20)/20);
+  const x=t=>L+(t-t0)/(t1-t0)*(W-L-Rm),y=v=>T+(hi-v)/(hi-lo)*(H-T-B),fx=h=>x(tN+h*36e5);
+  let g='';
+  for(let v=lo;v<=hi+1e-9;v+=.05){const Y=y(v);g+=`<line x1="${L}" x2="${W-Rm}" y1="${Y}" y2="${Y}" class="gl"/><text x="${L-6}" y="${Y+4}" class="tx" font-size="12" text-anchor="end">${Math.round(v*100)}%</text>`}
+  const d0=new Date(t0);d0.setUTCHours(0,0,0,0);const days=[];for(let t=d0.getTime()+864e5;t<t1;t+=864e5)days.push(t);
+  days.forEach(t=>{const X=x(t);g+=`<line x1="${X}" x2="${X}" y1="${T}" y2="${H-B}" class="gl2"/>`+(narrow&&days.length>4?'':`<text x="${X}" y="${H-8}" class="tx" font-size="12" text-anchor="middle">${new Date(t).toLocaleDateString(undefined,{month:'short',day:'numeric',timeZone:'UTC'})}</text>`)});
+  g+=`<line x1="${L}" x2="${W-Rm}" y1="${y(.5)}" y2="${y(.5)}" class="mid" stroke-dasharray="4 4"/>`;
+  const area=(a,b)=>'M'+fan.map(f=>fx(f.h).toFixed(1)+','+y(f[a]).toFixed(1)).join('L')+'L'+fan.slice().reverse().map(f=>fx(f.h).toFixed(1)+','+y(f[b]).toFixed(1)).join('L')+'Z';
+  if(fan){
+    g+=`<path d="${area('hi90','lo90')}" class="b90"/>`;
+    if(fan[0].lo50!=null)g+=`<path d="${area('hi50','lo50')}" class="b50"/>`;
+    g+=`<path d="M${fan.map(f=>fx(f.h).toFixed(1)+','+y(f.m).toFixed(1)).join('L')}" fill="none" class="fc" stroke-width="2" stroke-dasharray="4 3"/>`;
+  }
+  const xn=x(tN);
+  g+=`<line x1="${xn}" x2="${xn}" y1="${T}" y2="${H-B}" class="now"/><text x="${xn+4}" y="${T+10}" class="tx" font-size="12">now</text>`;
+  let d='';pts.forEach((p,i)=>{const X=x(p.t),Y=y(p[useP]);d+=i?`H${X.toFixed(1)}V${Y.toFixed(1)}`:`M${X.toFixed(1)},${Y.toFixed(1)}`});
+  g+=`<path d="${d}" fill="none" class="ln" stroke-width="2.5"/>`;
+  const xe=fan?fx(hz):xn,ye=y(R.win);
+  g+=`<circle cx="${xe}" cy="${ye}" r="5" class="dot" stroke-width="2"/><text x="${xe+6}" y="${ye+4}" class="lbl" font-size="13" font-weight="600">${pct(R.win,0)}</text>`;
+  svg.innerHTML=g;
+}
+const ro=new ResizeObserver(draw);ro.observe(svg);
+
+function run(text){
+  try{D=load(JSON.parse(text));for(const k in cache)delete cache[k];$('msg').textContent='';render();try{localStorage.setItem('oma-src5',text)}catch(e){}}
+  catch(e){$('msg').textContent='Could not analyze: '+e.message}
+}
+$('tabs').addEventListener('click',e=>{const b=e.target.closest('button[data-m]');if(b&&D){method=b.dataset.m;render()}});
+$('sidetoggle').addEventListener('click',()=>{const o=$('side').classList.toggle('open');$('sidetoggle').setAttribute('aria-expanded',o)});
+$('go').addEventListener('click',()=>run($('src').value));
+$('reset').addEventListener('click',()=>{$('src').value=JSON.stringify(ORIG,null,1);run($('src').value)});
+['n1','n2','hz','ps','lam','drift','anchor'].forEach(id=>$(id).addEventListener('input',()=>D&&render()));
+let saved=null;try{saved=localStorage.getItem('oma-src5')}catch(e){}
+$('src').value=saved||JSON.stringify(ORIG,null,1);
+run($('src').value);
+}
+</script>
+</body>
+</html>
